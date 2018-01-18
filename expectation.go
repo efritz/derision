@@ -6,31 +6,60 @@ type (
 		Path    string              `json:"path"`
 		Headers map[string][]string `json:"headers"`
 	}
+
+	matcher func(*request) bool
 )
 
 func (e *expectation) Matches(r *request) bool {
-	if e.Method != "" && r.Method != e.Method {
-		return false
+	return matchAll(r, e.matchMethod, e.matchURL, e.matchHeaders)
+}
+
+func (e *expectation) matchMethod(r *request) bool {
+	if e.Method == "" {
+		return true
 	}
 
-	if e.Path != "" && r.URL != e.Path {
-		return false
+	return r.Method == e.Method
+}
+
+func (e *expectation) matchURL(r *request) bool {
+	if e.Path == "" {
+		return true
 	}
 
+	return r.URL == e.Path
+}
+
+func (e *expectation) matchHeaders(r *request) bool {
 	for k, match := range e.Headers {
-		vals, ok := r.Headers[k]
-		if !ok {
+		if !matchSlices(match, r.Headers[k]) {
 			return false
 		}
+	}
 
-		if len(vals) != len(match) {
+	return true
+}
+
+//
+// Helpers
+
+func matchAll(r *request, matchers ...matcher) bool {
+	for _, m := range matchers {
+		if !m(r) {
 			return false
 		}
+	}
+	return true
+}
 
-		for i, v := range vals {
-			if v != match[i] {
-				return false
-			}
+func matchSlices(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	for i, v := range a {
+		if v != b[i] {
+			return false
 		}
 	}
 
