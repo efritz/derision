@@ -1,67 +1,91 @@
 package main
 
-type (
-	expectation struct {
-		Method  string              `json:"method"`
-		Path    string              `json:"path"`
-		Headers map[string][]string `json:"headers"`
-	}
-
-	matcher func(*request) bool
+import (
+	"regexp"
 )
 
-func (e *expectation) Matches(r *request) bool {
-	return matchAll(r, e.matchMethod, e.matchURL, e.matchHeaders)
-}
-
-func (e *expectation) matchMethod(r *request) bool {
-	if e.Method == "" {
-		return true
+type (
+	expectation struct {
+		method  *regexp.Regexp
+		path    *regexp.Regexp
+		headers map[string]*regexp.Regexp
 	}
 
-	return r.Method == e.Method
-}
-
-func (e *expectation) matchURL(r *request) bool {
-	if e.Path == "" {
-		return true
+	match struct {
+		methodGroups []string
+		pathGroups   []string
+		headerGroups map[string][]string
 	}
 
-	return r.URL == e.Path
-}
+	matcher func(*request, *match) *match
+)
 
-func (e *expectation) matchHeaders(r *request) bool {
-	for k, match := range e.Headers {
-		if !matchSlices(match, r.Headers[k]) {
-			return false
+func (e *expectation) Matches(r *request) *match {
+	match := &match{}
+	for _, m := range []matcher{e.matchMethod, e.matchPath, e.matchHeaders} {
+		match = m(r, match)
+
+		if match == nil {
+			break
 		}
 	}
 
-	return true
+	return match
+}
+
+func (e *expectation) matchMethod(r *request, m *match) *match {
+	if match, groups := matchRegex(e.method, r.Method); match {
+		m.methodGroups = groups
+		return m
+	}
+
+	return nil
+}
+
+func (e *expectation) matchPath(r *request, m *match) *match {
+	if match, groups := matchRegex(e.path, r.Path); match {
+		m.pathGroups = groups
+		return m
+	}
+
+	return nil
+}
+
+func (e *expectation) matchHeaders(r *request, m *match) *match {
+	headerGroups := map[string][]string{}
+
+	for k, re := range e.headers {
+		if match, groups := matchRegex(re, getFirst(r.Headers, k)); match {
+			headerGroups[k] = groups
+			continue
+		}
+
+		return nil
+	}
+
+	m.headerGroups = headerGroups
+	return m
 }
 
 //
 // Helpers
 
-func matchAll(r *request, matchers ...matcher) bool {
-	for _, m := range matchers {
-		if !m(r) {
-			return false
-		}
+func matchRegex(re *regexp.Regexp, val string) (bool, []string) {
+	if re == nil {
+		return true, nil
 	}
-	return true
+
+	if !re.MatchString(val) {
+		return false, nil
+	}
+
+	return true, re.FindStringSubmatch(val)
 }
 
-func matchSlices(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
+func getFirst(headers map[string][]string, k string) string {
+	if vals, ok := headers[k]; ok && len(vals) > 0 {
+		return vals[0]
 	}
 
-	for i, v := range a {
-		if v != b[i] {
-			return false
-		}
-	}
-
-	return true
+	return ""
 }

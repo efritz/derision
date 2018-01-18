@@ -23,7 +23,7 @@ type (
 
 	request struct {
 		Method  string              `json:"method"`
-		URL     string              `json:"url"`
+		Path    string              `json:"path"`
 		Headers map[string][]string `json:"headers"`
 		Body    string              `json:"body"`
 	}
@@ -75,13 +75,8 @@ func (s *server) clearHandler(r *http.Request) *response.Response {
 func (s *server) registerHandler(r *http.Request) *response.Response {
 	handler, err := makeHandler(r.Body)
 	if err != nil {
-		if v, ok := err.(*validationError); ok {
-			errors := []string{}
-			for _, err := range v.errors {
-				errors = append(errors, fmt.Sprintf("%s: %s", err.Field(), err.Description()))
-			}
-
-			return s.makeDetailedError(errors, "Validation error").SetStatusCode(http.StatusBadRequest)
+		if verr, ok := err.(*validationError); ok {
+			return s.makeDetailedError(verr.errors, "Validation error").SetStatusCode(http.StatusBadRequest)
 		}
 
 		return s.makeError("Failed to make handler (%s)", err.Error())
@@ -139,7 +134,7 @@ func convertRequest(r *http.Request) (*request, error) {
 
 	return &request{
 		Method:  r.Method,
-		URL:     r.URL.String(),
+		Path:    r.URL.Path,
 		Headers: r.Header,
 		Body:    string(data),
 	}, nil
@@ -152,11 +147,11 @@ func makeHandler(r io.ReadCloser) (handler, error) {
 	}
 
 	handler := func(r *request) (*response.Response, error) {
-		if !expectation.Matches(r) {
-			return nil, nil
+		if match := expectation.Matches(r); match != nil {
+			return template.Respond(r, match)
 		}
 
-		return template.Respond(r)
+		return nil, nil
 	}
 
 	return handler, nil

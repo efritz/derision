@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/efritz/response"
@@ -14,7 +15,7 @@ type (
 	}
 )
 
-func (t *template) Respond(r *request) (*response.Response, error) {
+func (t *template) Respond(r *request, m *match) (*response.Response, error) {
 	statusCode, err := t.getStatusCode()
 	if err != nil {
 		return nil, err

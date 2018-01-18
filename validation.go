@@ -2,19 +2,27 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
+	"regexp"
 
 	"github.com/xeipuuv/gojsonschema"
 )
 
 type (
 	jsonHandler struct {
-		Expectation expectation `json:"request"`
-		Template    template    `json:"response"`
+		Expectation jsonExpectation `json:"request"`
+		Template    template        `json:"response"`
+	}
+
+	jsonExpectation struct {
+		Method  string            `json:"method"`
+		Path    string            `json:"path"`
+		Headers map[string]string `json:"headers"`
 	}
 
 	validationError struct {
-		errors []gojsonschema.ResultError
+		errors []string
 	}
 )
 
@@ -79,7 +87,12 @@ func readAndValidate(rc io.ReadCloser) (*expectation, *template, error) {
 	}
 
 	if !result.Valid() {
-		return nil, nil, &validationError{result.Errors()}
+		errors := []string{}
+		for _, err := range result.Errors() {
+			errors = append(errors, fmt.Sprintf("%s: %s", err.Field(), err.Description()))
+		}
+
+		return nil, nil, &validationError{errors}
 	}
 
 	payload := &jsonHandler{}
@@ -87,7 +100,38 @@ func readAndValidate(rc io.ReadCloser) (*expectation, *template, error) {
 		return nil, nil, err
 	}
 
-	return &payload.Expectation, &payload.Template, nil
+	expectation, err := convertExpectation(payload.Expectation)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return expectation, &payload.Template, nil
+}
+
+func convertExpectation(e jsonExpectation) (*expectation, error) {
+	methodRegex, err := compile(e.Method)
+	if err != nil {
+		return nil, &validationError{[]string{"method: illegal regex"}}
+	}
+
+	pathRegex, err := compile(e.Path)
+	if err != nil {
+		return nil, &validationError{[]string{"path: ilegal regex"}}
+	}
+
+	return &expectation{
+		method:  methodRegex,
+		path:    pathRegex,
+		headers: nil, // TODO
+	}, nil
+}
+
+func compile(val string) (*regexp.Regexp, error) {
+	if val == "" {
+		return nil, nil
+	}
+
+	return regexp.Compile(val)
 }
 
 func (e *validationError) Error() string {
