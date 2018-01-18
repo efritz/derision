@@ -73,7 +73,25 @@ func (s *server) clearHandler(w http.ResponseWriter, r *http.Request) {
 func (s *server) registerHandler(w http.ResponseWriter, r *http.Request) {
 	handler, err := makeHandler(r.Body)
 	if err != nil {
-		writeError(w, "Failed to make handler (%s)\n", err.Error())
+		switch v := err.(type) {
+		case *validationError:
+			errors := []string{}
+			for _, err := range v.errors {
+				errors = append(errors, fmt.Sprintf("%s: %s", err.Field(), err.Description()))
+			}
+
+			body, _ := json.Marshal(map[string]interface{}{
+				"message": "validation error",
+				"errors":  errors,
+			})
+
+			w.Header().Add("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write(body)
+		default:
+			writeError(w, "Failed to make handler (%s)\n", err.Error())
+		}
+
 		return
 	}
 
@@ -118,7 +136,6 @@ func convertRequest(r *http.Request) (*request, error) {
 }
 
 func makeHandler(r io.ReadCloser) (handler, error) {
-	// TODO - if validation error display something better
 	expectation, template, err := readAndValidate(r)
 	if err != nil {
 		return nil, err
@@ -140,7 +157,9 @@ func writeError(w http.ResponseWriter, format string, args ...interface{}) {
 	fmt.Printf(format, args...)
 
 	if w != nil {
-		// TOOD - display something better here as well
+		w.Header().Add("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
+		body, _ := json.Marshal(map[string]string{"message": fmt.Sprintf(format, args...)})
+		w.Write(body)
 	}
 }

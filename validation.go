@@ -2,16 +2,21 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 
 	"github.com/xeipuuv/gojsonschema"
 )
 
-type jsonHandler struct {
-	Expectation expectation `json:"request"`
-	Template    template    `json:"response"`
-}
+type (
+	jsonHandler struct {
+		Expectation expectation `json:"request"`
+		Template    template    `json:"response"`
+	}
+
+	validationError struct {
+		errors []gojsonschema.ResultError
+	}
+)
 
 const handlerSchema = `
 {
@@ -74,11 +79,7 @@ func readAndValidate(rc io.ReadCloser) (*expectation, *template, error) {
 	}
 
 	if !result.Valid() {
-		for _, err := range result.Errors() {
-			fmt.Printf("Validation error (%s: %s)\n", err.Field(), err.Description())
-		}
-
-		return nil, nil, fmt.Errorf("validation error")
+		return nil, nil, &validationError{result.Errors()}
 	}
 
 	payload := &jsonHandler{}
@@ -87,4 +88,8 @@ func readAndValidate(rc io.ReadCloser) (*expectation, *template, error) {
 	}
 
 	return &payload.Expectation, &payload.Template, nil
+}
+
+func (e *validationError) Error() string {
+	return "validation error"
 }
