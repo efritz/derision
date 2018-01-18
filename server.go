@@ -118,6 +118,7 @@ func convertRequest(r *http.Request) (*request, error) {
 }
 
 func makeHandler(r io.ReadCloser) (handler, error) {
+	// TODO - if validation error display something better
 	expectation, template, err := readAndValidate(r)
 	if err != nil {
 		return nil, err
@@ -139,6 +140,7 @@ func writeError(w http.ResponseWriter, format string, args ...interface{}) {
 	fmt.Printf(format, args...)
 
 	if w != nil {
+		// TOOD - display something better here as well
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 }
