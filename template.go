@@ -1,8 +1,9 @@
 package main
 
 import (
-	"net/http"
 	"strconv"
+
+	"github.com/efritz/response"
 )
 
 type (
@@ -13,21 +14,21 @@ type (
 	}
 )
 
-func (t *template) Write(w http.ResponseWriter, r *request) (bool, error) {
+func (t *template) Respond(r *request) (*response.Response, error) {
+	statusCode, err := t.getStatusCode()
+	if err != nil {
+		return nil, err
+	}
+
+	resp := response.Respond([]byte(t.Body)).SetStatusCode(statusCode)
+
 	for header, values := range t.Headers {
 		for _, value := range values {
-			w.Header().Add(header, value)
+			resp.Header.Add(header, value)
 		}
 	}
 
-	statusCode, err := t.getStatusCode()
-	if err != nil {
-		return false, err
-	}
-
-	w.WriteHeader(statusCode)
-
-	return true, writeAll(w, []byte(t.Body))
+	return resp, nil
 }
 
 func (t *template) getStatusCode() (int, error) {

@@ -1,21 +1,25 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"os"
 	"sync"
+
+	"github.com/efritz/response"
 )
 
 type (
 	server struct {
-		mutex    sync.RWMutex
 		handlers []handler
 		requests []*request
+		logger   *log.Logger
+		mutex    sync.RWMutex
 	}
 
-	handler func(w http.ResponseWriter, r *request) (bool, bool, error)
+	handler func(r *request) (*response.Response, error)
 
 	request struct {
 		Method  string              `json:"method"`
@@ -29,17 +33,17 @@ func newServer() *server {
 	return &server{
 		handlers: []handler{},
 		requests: []*request{},
+		logger:   log.New(os.Stdout, "[derision] ", 0),
 	}
 }
 
 //
 // Handlers
 
-func (s *server) apiHandler(w http.ResponseWriter, r *http.Request) {
+func (s *server) apiHandler(r *http.Request) *response.Response {
 	req, err := convertRequest(r)
 	if err != nil {
-		writeError(w, "Failed to convert request (%s)\n", err.Error())
-		return
+		return s.makeError("Failed to convert request (%s)", err.Error())
 	}
 
 	s.mutex.Lock()
@@ -47,75 +51,81 @@ func (s *server) apiHandler(w http.ResponseWriter, r *http.Request) {
 	s.mutex.Unlock()
 
 	for _, handler := range s.handlers {
-		if matched, headersWritten, err := handler(w, req); matched {
-			if err != nil {
-				if headersWritten {
-					w = nil
-				}
+		response, err := handler(req)
+		if err != nil {
+			return s.makeError("Failed to invoke handler (%s)", err.Error())
+		}
 
-				writeError(w, "Failed to invoke handler (%s)\n", err.Error())
-			}
-
-			return
+		if response != nil {
+			return response
 		}
 	}
 
-	fmt.Printf("Did not find a matching handler for request\n")
-	w.WriteHeader(http.StatusNotFound)
+	return s.makeError("No matching handler registered for request").SetStatusCode(http.StatusNotFound)
 }
 
-func (s *server) clearHandler(w http.ResponseWriter, r *http.Request) {
+func (s *server) clearHandler(r *http.Request) *response.Response {
 	s.mutex.Lock()
 	s.handlers = s.handlers[:0]
 	s.mutex.Unlock()
+
+	return response.Empty(http.StatusNoContent)
 }
 
-func (s *server) registerHandler(w http.ResponseWriter, r *http.Request) {
+func (s *server) registerHandler(r *http.Request) *response.Response {
 	handler, err := makeHandler(r.Body)
 	if err != nil {
-		switch v := err.(type) {
-		case *validationError:
+		if v, ok := err.(*validationError); ok {
 			errors := []string{}
 			for _, err := range v.errors {
 				errors = append(errors, fmt.Sprintf("%s: %s", err.Field(), err.Description()))
 			}
 
-			body, _ := json.Marshal(map[string]interface{}{
-				"message": "validation error",
-				"errors":  errors,
-			})
-
-			w.Header().Add("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write(body)
-		default:
-			writeError(w, "Failed to make handler (%s)\n", err.Error())
+			return s.makeDetailedError(errors, "Validation error").SetStatusCode(http.StatusBadRequest)
 		}
 
-		return
+		return s.makeError("Failed to make handler (%s)", err.Error())
 	}
 
 	s.mutex.Lock()
 	s.handlers = append(s.handlers, handler)
 	s.mutex.Unlock()
+
+	return response.Empty(http.StatusNoContent)
 }
 
-func (s *server) gatherHandler(w http.ResponseWriter, r *http.Request) {
+func (s *server) gatherHandler(r *http.Request) *response.Response {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	data, err := json.Marshal(s.requests)
-	if err != nil {
-		writeError(w, "Failed to serialize request list (%s)\n", err.Error())
-		return
-	}
+	requests := s.requests
 
 	if r.URL.Query().Get("clear") != "" {
 		s.requests = s.requests[:0]
 	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Write(data)
+	return response.JSON(requests)
+}
+
+//
+// Errors
+
+func (s *server) makeError(format string, args ...interface{}) *response.Response {
+	return s.makeDetailedError(nil, format, args...)
+}
+
+func (s *server) makeDetailedError(details []string, format string, args ...interface{}) *response.Response {
+	s.logger.Printf(format, args...)
+
+	payload := map[string]interface{}{
+		"message": fmt.Sprintf(format, args...),
+	}
+
+	if len(details) > 0 {
+		payload["details"] = details
+	}
+
+	return response.JSON(payload).SetStatusCode(http.StatusInternalServerError)
 }
 
 //
@@ -141,25 +151,13 @@ func makeHandler(r io.ReadCloser) (handler, error) {
 		return nil, err
 	}
 
-	handler := func(w http.ResponseWriter, r *request) (bool, bool, error) {
+	handler := func(r *request) (*response.Response, error) {
 		if !expectation.Matches(r) {
-			return false, false, nil
+			return nil, nil
 		}
 
-		headersWritten, err := template.Write(w, r)
-		return true, headersWritten, err
+		return template.Respond(r)
 	}
 
 	return handler, nil
-}
-
-func writeError(w http.ResponseWriter, format string, args ...interface{}) {
-	fmt.Printf(format, args...)
-
-	if w != nil {
-		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		body, _ := json.Marshal(map[string]string{"message": fmt.Sprintf(format, args...)})
-		w.Write(body)
-	}
 }
