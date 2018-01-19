@@ -40,6 +40,46 @@ func newServer() *server {
 //
 // Handlers
 
+func (s *server) registerHandler(r *http.Request) *response.Response {
+	handler, err := makeHandler(r.Body)
+	if err != nil {
+		if verr, ok := err.(*validationError); ok {
+			resp := s.makeDetailedError(verr.errors, "Validation error")
+			resp.SetStatusCode(http.StatusBadRequest)
+			return resp
+		}
+
+		return s.makeError("Failed to make handler (%s)", err.Error())
+	}
+
+	s.mutex.Lock()
+	s.handlers = append(s.handlers, handler)
+	s.mutex.Unlock()
+
+	return response.Empty(http.StatusNoContent)
+}
+
+func (s *server) clearHandler(r *http.Request) *response.Response {
+	s.mutex.Lock()
+	s.handlers = s.handlers[:0]
+	s.mutex.Unlock()
+
+	return response.Empty(http.StatusNoContent)
+}
+
+func (s *server) gatherHandler(r *http.Request) *response.Response {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	requests := s.requests
+
+	if r.URL.Query().Get("clear") != "" {
+		s.requests = s.requests[:0]
+	}
+
+	return response.JSON(requests)
+}
+
 func (s *server) apiHandler(r *http.Request) *response.Response {
 	req, err := convertRequest(r)
 	if err != nil {
@@ -61,45 +101,9 @@ func (s *server) apiHandler(r *http.Request) *response.Response {
 		}
 	}
 
-	return s.makeError("No matching handler registered for request").SetStatusCode(http.StatusNotFound)
-}
-
-func (s *server) clearHandler(r *http.Request) *response.Response {
-	s.mutex.Lock()
-	s.handlers = s.handlers[:0]
-	s.mutex.Unlock()
-
-	return response.Empty(http.StatusNoContent)
-}
-
-func (s *server) registerHandler(r *http.Request) *response.Response {
-	handler, err := makeHandler(r.Body)
-	if err != nil {
-		if verr, ok := err.(*validationError); ok {
-			return s.makeDetailedError(verr.errors, "Validation error").SetStatusCode(http.StatusBadRequest)
-		}
-
-		return s.makeError("Failed to make handler (%s)", err.Error())
-	}
-
-	s.mutex.Lock()
-	s.handlers = append(s.handlers, handler)
-	s.mutex.Unlock()
-
-	return response.Empty(http.StatusNoContent)
-}
-
-func (s *server) gatherHandler(r *http.Request) *response.Response {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	requests := s.requests
-
-	if r.URL.Query().Get("clear") != "" {
-		s.requests = s.requests[:0]
-	}
-
-	return response.JSON(requests)
+	resp := s.makeError("No matching handler registered for request")
+	resp.SetStatusCode(http.StatusNotFound)
+	return resp
 }
 
 //
@@ -120,7 +124,9 @@ func (s *server) makeDetailedError(details []string, format string, args ...inte
 		payload["details"] = details
 	}
 
-	return response.JSON(payload).SetStatusCode(http.StatusInternalServerError)
+	resp := response.JSON(payload)
+	resp.SetStatusCode(http.StatusInternalServerError)
+	return resp
 }
 
 //

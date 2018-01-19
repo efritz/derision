@@ -116,13 +116,25 @@ func convertExpectation(e jsonExpectation) (*expectation, error) {
 
 	pathRegex, err := compile(e.Path)
 	if err != nil {
-		return nil, &validationError{[]string{"path: ilegal regex"}}
+		return nil, &validationError{[]string{"path: illegal regex"}}
+	}
+
+	headerRegexMap := map[string]*regexp.Regexp{}
+	for header, value := range e.Headers {
+		regex, err := compile(value)
+		if err != nil {
+			return nil, &validationError{[]string{fmt.Sprintf("header %s: illegal regex", header)}}
+		}
+
+		if regex != nil {
+			headerRegexMap[header] = regex
+		}
 	}
 
 	return &expectation{
 		method:  methodRegex,
 		path:    pathRegex,
-		headers: nil, // TODO
+		headers: headerRegexMap,
 	}, nil
 }
 

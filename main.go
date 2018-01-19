@@ -21,8 +21,8 @@ func main() {
 
 func makeRouter(s *server) *mux.Router {
 	r := mux.NewRouter().StrictSlash(false)
-	r.PathPrefix("/_control").Path("/clear").Methods("POST").HandlerFunc(response.Convert(s.clearHandler))
 	r.PathPrefix("/_control").Path("/register").Methods("POST").HandlerFunc(response.Convert(s.registerHandler))
+	r.PathPrefix("/_control").Path("/clear").Methods("POST").HandlerFunc(response.Convert(s.clearHandler))
 	r.PathPrefix("/_control").Path("/gather").Methods("GET").HandlerFunc(response.Convert(s.gatherHandler))
 	r.NotFoundHandler = http.HandlerFunc(response.Convert(s.apiHandler))
 
