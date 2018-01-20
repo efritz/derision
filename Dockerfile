@@ -1,5 +1,7 @@
-FROM scratch
+FROM alpine
+ADD https://github.com/efritz/derision/releases/download/0.1/derision /
+RUN chmod +x derision
 
-EXPOSE 5000
-COPY derision /
-CMD ["/derision"]
+FROM scratch
+COPY --from=0 /derision .
+CMD ["./derision"]
