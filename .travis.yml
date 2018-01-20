@@ -1,12 +1,14 @@
 language: go
 
 go:
-    - 1.8
     - 1.9
-    - tip
+
+install:
+    - go get ./...
 
 script:
     - go test -coverprofile=coverage.txt -covermode=atomic
+    - go build
 
 after_success:
     - bash <(curl -s https://codecov.io/bash)
@@ -14,3 +16,14 @@ after_success:
 addons:
     code_climate:
         repo_token: dbdf4ee7f398b306062f9fbd160fc5efc161b2a5744cd4f4a44e6aaded7ca0d8
+
+deploy:
+    provider: releases
+    file:
+        - derision
+    skip_cleanup: true
+    on:
+        repo: efritz/arrows
+        tags: true
+        api_key:
+            secure: SKgqnlNwi6X48AKerS0nurVcyuhTo+nowuRdGyfrzROwc5zNgINYyHdjQVq6RmujN8RF0OoOXWea7hJuL48QLo6e5wRG+ywMLH7hAnto9aAGOdRhoyuMESk5VnR2yY0MIUwjykk+hxgFVLulrMmNZLbZEyyl5KvyMjzfFUL+OUy4zz0orQISMdnG0+nx41tcuKuFYQAfw2EYQbOfDQc7XlHl1ogzoG1fT694wkxcTe1IFMBSJqQVHK0kkMBzaGXxPZCQCCO0E3QzTZ9DFNIdpE+tTewcBq2x5yhU+NyW1zfVJKUd7hR/TfLckCXGp9Gvtu1/qQOFUVBLdksJ8DbiHnRDxgMEkePeJw4Z1vm7/12LwUk1NSEyHy4kKjRbeY2c1lto5YP2I3O+GozgbsH76Sez67xwct6eJQRgoQN6NvY9JthJoZwegbqKR5ST/viuJ3pMwTGaUrzlj1kmLd4ssP0PWWHtOGyHtoFIx8SF7ZW90sBaiinJQhpJnhZSdAErcISqSXEQlTG0Rqbje2YFnJZe5OpsGv/ofnKrsqGhp9PFqlHB1jXsxv+rD2qoUskEFyudaPYYnWI75ZFzY0TwOKN7ajsXn0+6o+csPcpho5WNio40YpWbHJ6G5qh7/5dtOhXuN/HHfpp+YsD8LBAp+YTo3raoQ1i7IkwdFAq8/7g=
