@@ -67,7 +67,7 @@ func (s *server) clearHandler(r *http.Request) *response.Response {
 	return response.Empty(http.StatusNoContent)
 }
 
-func (s *server) gatherHandler(r *http.Request) *response.Response {
+func (s *server) requestsHandler(r *http.Request) *response.Response {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 

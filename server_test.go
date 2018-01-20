@@ -41,13 +41,13 @@ func (s *ServerSuite) TestClearHandler(t sweet.T) {
 	Expect(server.handlers).To(BeEmpty())
 }
 
-func (s *ServerSuite) TestGatherHandler(t sweet.T) {
+func (s *ServerSuite) TestRequestsHandler(t sweet.T) {
 	server := newServer()
 	server.apiHandler(makeRequest("GET", "http://derision.io/a", bytes.NewReader([]byte("foo"))))
 	server.apiHandler(makeRequest("GET", "http://derision.io/b", bytes.NewReader([]byte("bar"))))
 	server.apiHandler(makeRequest("GET", "http://derision.io/c", bytes.NewReader([]byte("baz"))))
 
-	body := getGatherBody(server, "http://derision.io/_control/gather")
+	body := getRequestsBody(server, "http://derision.io/_control/requests")
 
 	Expect(body).To(HaveLen(3))
 	Expect(body[0]["path"]).To(Equal("/a"))
@@ -58,15 +58,15 @@ func (s *ServerSuite) TestGatherHandler(t sweet.T) {
 	Expect(body[2]["body"]).To(Equal("baz"))
 }
 
-func (s *ServerSuite) TestGatherHandlerClear(t sweet.T) {
+func (s *ServerSuite) TestRequestsHandlerClear(t sweet.T) {
 	server := newServer()
 	server.apiHandler(makeRequest("GET", "http://derision.io/a", bytes.NewReader([]byte("foo"))))
 	server.apiHandler(makeRequest("GET", "http://derision.io/b", bytes.NewReader([]byte("bar"))))
 	server.apiHandler(makeRequest("GET", "http://derision.io/c", bytes.NewReader([]byte("baz"))))
 
-	Expect(getGatherBody(server, "http://derision.io/_control/gather")).To(HaveLen(3))
-	Expect(getGatherBody(server, "http://derision.io/_control/gather?clear=true")).To(HaveLen(3))
-	Expect(getGatherBody(server, "http://derision.io/_control/gather")).To(HaveLen(0))
+	Expect(getRequestsBody(server, "http://derision.io/_control/requests")).To(HaveLen(3))
+	Expect(getRequestsBody(server, "http://derision.io/_control/requests?clear=true")).To(HaveLen(3))
+	Expect(getRequestsBody(server, "http://derision.io/_control/requests")).To(HaveLen(0))
 }
 
 func (s *ServerSuite) TestAPIHandler(t sweet.T) {
@@ -164,8 +164,8 @@ func getBody(resp *response.Response) string {
 	return string(data)
 }
 
-func getGatherBody(server *server, url string) []map[string]interface{} {
-	resp := server.gatherHandler(makeRequest("GET", url, nil))
+func getRequestsBody(server *server, url string) []map[string]interface{} {
+	resp := server.requestsHandler(makeRequest("GET", url, nil))
 
 	body := []map[string]interface{}{}
 	json.Unmarshal([]byte(getBody(resp)), &body)
