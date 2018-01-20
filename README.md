@@ -58,8 +58,7 @@ $ curl -v http://localhost:5000/users/123
 After making non-control requests to the API, the sequence of requests can be
 listed via the following endpoint.
 
-```
-bash
+```bash
 $ curl -v http://localhost:5000/_control/requests
 < HTTP/1.1 200 OK
 < Content-Type: application/json
