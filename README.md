@@ -84,7 +84,7 @@ Requesting this with the `?clear=true` query parameter will truncate this list.
 The following items are accessible within the response templates.
 
 | Name         | Description |
-+--------------+-------------+
+| ------------ | ----------- |
 | Method       | Raw request method |
 | Path         | Raw request path |
 | Headers      | Raw request headers (`string` to `[]string` pairs) |
