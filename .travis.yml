@@ -3,9 +3,6 @@ language: go
 go:
     - 1.9
 
-install:
-    - go get ./...
-
 script:
     - go test -coverprofile=coverage.txt -covermode=atomic
     - go build
