@@ -19,6 +19,7 @@ type (
 		Method  string            `json:"method"`
 		Path    string            `json:"path"`
 		Headers map[string]string `json:"headers"`
+		Body    string            `json:"body"`
 	}
 
 	validationError struct {
@@ -42,6 +43,9 @@ const handlerSchema = `
 				},
 				"headers": {
 					"type": "object"
+				},
+				"body": {
+					"type": "string"
 				}
 			},
 			"additionalProperties": false
@@ -131,10 +135,16 @@ func convertExpectation(e jsonExpectation) (*expectation, error) {
 		}
 	}
 
+	bodyRegex, err := compile(e.Body)
+	if err != nil {
+		return nil, &validationError{[]string{"body: illegal regex"}}
+	}
+
 	return &expectation{
 		method:  methodRegex,
 		path:    pathRegex,
 		headers: headerRegexMap,
+		body:    bodyRegex,
 	}, nil
 }
 

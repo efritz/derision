@@ -27,6 +27,7 @@ func (t *template) Respond(r *request, m *match) (*response.Response, error) {
 		"MethodGroups": m.methodGroups,
 		"PathGroups":   m.pathGroups,
 		"HeaderGroups": m.headerGroups,
+		"BodyGroups":   m.bodyGroups,
 	}
 
 	body, err := applyTemplate("body", t.Body, args)

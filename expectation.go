@@ -9,12 +9,14 @@ type (
 		method  *regexp.Regexp
 		path    *regexp.Regexp
 		headers map[string]*regexp.Regexp
+		body    *regexp.Regexp
 	}
 
 	match struct {
 		methodGroups []string
 		pathGroups   []string
 		headerGroups map[string][]string
+		bodyGroups   []string
 	}
 
 	matcher func(*request, *match) *match
@@ -22,7 +24,7 @@ type (
 
 func (e *expectation) Matches(r *request) *match {
 	match := &match{}
-	for _, m := range []matcher{e.matchMethod, e.matchPath, e.matchHeaders} {
+	for _, m := range []matcher{e.matchMethod, e.matchPath, e.matchHeaders, e.matchBody} {
 		match = m(r, match)
 
 		if match == nil {
@@ -65,6 +67,15 @@ func (e *expectation) matchHeaders(r *request, m *match) *match {
 
 	m.headerGroups = headerGroups
 	return m
+}
+
+func (e *expectation) matchBody(r *request, m *match) *match {
+	if match, groups := matchRegex(e.body, r.Body); match {
+		m.bodyGroups = groups
+		return m
+	}
+
+	return nil
 }
 
 //

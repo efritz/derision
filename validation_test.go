@@ -67,6 +67,16 @@ func (s *ValidationSuite) TestConvertExpectationBadHeaderJSON(t sweet.T) {
 	Expect(err.Error()).To(Equal("validation error"))
 }
 
+func (s *ValidationSuite) TestConvertExpectationBadBodyJSON(t sweet.T) {
+	_, err := convertExpectation(jsonExpectation{
+		Method:  ``,
+		Body:    `[`,
+		Headers: nil,
+	})
+
+	Expect(err).NotTo(BeNil())
+	Expect(err.Error()).To(Equal("validation error"))
+}
 func (s *ValidationSuite) TestCompile(t sweet.T) {
 	_, err := compile(`^\d+`)
 	Expect(err).To(BeNil())

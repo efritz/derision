@@ -16,6 +16,7 @@ var TestExpectation = &expectation{
 		"X-Secret":     regexp.MustCompile(`^sssh$`),
 		"Content-Type": regexp.MustCompile(`^application/(json|xml)$`),
 	},
+	body: regexp.MustCompile(`"xyz_id": (\d+)`),
 }
 
 func (s *ExpectationSuite) TestSuccessfulMatch(t sweet.T) {
@@ -27,6 +28,7 @@ func (s *ExpectationSuite) TestSuccessfulMatch(t sweet.T) {
 			"X-Secret":     []string{"sssh", "ignored value"},
 			"X-Extra":      []string{"foo", "bar", "baz"},
 		},
+		Body: `{"xyz_id": 42, "zyx_id": 24}`,
 	})
 
 	Expect(match).NotTo(BeNil())
@@ -36,6 +38,7 @@ func (s *ExpectationSuite) TestSuccessfulMatch(t sweet.T) {
 		"Content-Type": []string{"application/json", "json"},
 		"X-Secret":     []string{"sssh"},
 	}))
+	Expect(match.bodyGroups).To(Equal([]string{`"xyz_id": 42`, "42"}))
 }
 
 func (s *ExpectationSuite) TestMatchFailsOnMethod(t sweet.T) {
@@ -46,6 +49,7 @@ func (s *ExpectationSuite) TestMatchFailsOnMethod(t sweet.T) {
 			"Content-Type": []string{"application/json"},
 			"X-Secret":     []string{"sssh"},
 		},
+		Body: `{"xyz_id": 42, "zyx_id": 24}`,
 	})).To(BeNil())
 }
 
@@ -57,6 +61,7 @@ func (s *ExpectationSuite) TestMatchFailsOnPath(t sweet.T) {
 			"Content-Type": []string{"application/json"},
 			"X-Secret":     []string{"sssh"},
 		},
+		Body: `{"xyz_id": 42, "zyx_id": 24}`,
 	})).To(BeNil())
 }
 
@@ -68,6 +73,19 @@ func (s *ExpectationSuite) TestMatchFailsOnHeader(t sweet.T) {
 			"Content-Type": []string{"application/yaml"},
 			"X-Secret":     []string{"sssh"},
 		},
+		Body: `{"xyz_id": 42, "zyx_id": 24}`,
+	})).To(BeNil())
+}
+
+func (s *ExpectationSuite) TestMatchFailsOnBody(t sweet.T) {
+	Expect(TestExpectation.Matches(&request{
+		Method: "GET",
+		Path:   "/xyz/123",
+		Headers: map[string][]string{
+			"Content-Type": []string{"application/json"},
+			"X-Secret":     []string{"sssh"},
+		},
+		Body: `{"xyz_id": "abc", "zyx_id": 24}`,
 	})).To(BeNil())
 }
 
