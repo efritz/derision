@@ -91,6 +91,7 @@ The following items are accessible within the response templates.
 | MethodGroups | Groups captured from the pattern match on the request method |
 | PathGroups   | Groups captured from the pattern match on the request path |
 | HeaderGroups | Groups captured from the pattern match on a request header value (`string` to `[]string` pairs) |
+| BodyGroups   | Groups captured form the pattenr match on the request body |
 
 ## License
 
