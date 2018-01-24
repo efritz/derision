@@ -1,8 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
+	"os"
 
+	"github.com/alecthomas/kingpin"
 	"github.com/efritz/response"
 	"github.com/gorilla/mux"
 	"github.com/urfave/negroni"
@@ -10,13 +13,48 @@ import (
 
 const negroniLogTemplate = `{{.Method}} {{.Path}} -> {{.Status}}`
 
+var (
+	registrationPath = kingpin.Flag("registration-path", "Path to file with _control/register payloads").String()
+)
+
 func main() {
+	kingpin.Parse()
+
+	if err := run(); err != nil {
+		if verr, ok := err.(*validationError); ok {
+			fmt.Fprintf(os.Stderr, "error: failed to validate registration file:\n")
+
+			for _, err := range verr.errors {
+				fmt.Fprintf(os.Stderr, "    - %s\n", err)
+			}
+		} else {
+			fmt.Fprintf(os.Stderr, "error: %s", err.Error())
+		}
+
+		os.Exit(1)
+	}
+}
+
+func run() error {
+	handlers, err := makeHandlersFromFile(*registrationPath)
+	if err != nil {
+		return err
+	}
+
+	server := newServer()
+	for _, handler := range handlers {
+		server.addHandler(handler)
+	}
+
+	// Setup logging
 	logger := negroni.NewLogger()
 	logger.SetFormat(negroniLogTemplate)
 
+	// Start the server
 	negroni := negroni.New(negroni.NewRecovery(), logger)
-	negroni.UseHandler(makeRouter(newServer()))
+	negroni.UseHandler(makeRouter(server))
 	negroni.Run("0.0.0.0:5000")
+	return nil
 }
 
 func makeRouter(s *server) *mux.Router {

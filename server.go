@@ -52,11 +52,14 @@ func (s *server) registerHandler(r *http.Request) *response.Response {
 		return s.makeError("Failed to make handler (%s)", err.Error())
 	}
 
+	s.addHandler(handler)
+	return response.Empty(http.StatusNoContent)
+}
+
+func (s *server) addHandler(handler handler) {
 	s.mutex.Lock()
 	s.handlers = append(s.handlers, handler)
-	s.mutex.Unlock()
-
-	return response.Empty(http.StatusNoContent)
+	defer s.mutex.Unlock()
 }
 
 func (s *server) clearHandler(r *http.Request) *response.Response {
