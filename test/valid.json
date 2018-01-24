@@ -3,7 +3,7 @@
         "request": {
             "method": "POST"
         },
-		"response": {
+        "response": {
             "body": "foo"
         }
     }
