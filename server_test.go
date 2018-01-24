@@ -17,7 +17,7 @@ import (
 type ServerSuite struct{}
 
 func (s *ServerSuite) TestRegisterHandler(t sweet.T) {
-	server := newServer()
+	server := newServer(20)
 	resp := server.registerHandler(makeRequest("POST", "http://deriosio.io/_control/register", bytes.NewBuffer([]byte(`{
 		"request": {"method": "POST"},
 		"response": {"body": "foo"}
@@ -29,7 +29,7 @@ func (s *ServerSuite) TestRegisterHandler(t sweet.T) {
 }
 
 func (s *ServerSuite) TestClearHandler(t sweet.T) {
-	server := newServer()
+	server := newServer(20)
 	server.handlers = append(server.handlers, NoopHandler)
 	server.handlers = append(server.handlers, NoopHandler)
 	server.handlers = append(server.handlers, NoopHandler)
@@ -42,7 +42,7 @@ func (s *ServerSuite) TestClearHandler(t sweet.T) {
 }
 
 func (s *ServerSuite) TestRequestsHandler(t sweet.T) {
-	server := newServer()
+	server := newServer(20)
 	server.apiHandler(makeRequest("GET", "http://derision.io/a", bytes.NewReader([]byte("foo"))))
 	server.apiHandler(makeRequest("GET", "http://derision.io/b", bytes.NewReader([]byte("bar"))))
 	server.apiHandler(makeRequest("GET", "http://derision.io/c", bytes.NewReader([]byte("baz"))))
@@ -59,7 +59,7 @@ func (s *ServerSuite) TestRequestsHandler(t sweet.T) {
 }
 
 func (s *ServerSuite) TestRequestsHandlerClear(t sweet.T) {
-	server := newServer()
+	server := newServer(20)
 	server.apiHandler(makeRequest("GET", "http://derision.io/a", bytes.NewReader([]byte("foo"))))
 	server.apiHandler(makeRequest("GET", "http://derision.io/b", bytes.NewReader([]byte("bar"))))
 	server.apiHandler(makeRequest("GET", "http://derision.io/c", bytes.NewReader([]byte("baz"))))
@@ -70,7 +70,7 @@ func (s *ServerSuite) TestRequestsHandlerClear(t sweet.T) {
 }
 
 func (s *ServerSuite) TestAPIHandler(t sweet.T) {
-	server := newServer()
+	server := newServer(20)
 	server.handlers = append(server.handlers, NoopHandler)
 	server.handlers = append(server.handlers, ConditionalHandler)
 	server.handlers = append(server.handlers, ErrorHandler)
@@ -82,7 +82,7 @@ func (s *ServerSuite) TestAPIHandler(t sweet.T) {
 }
 
 func (s *ServerSuite) TestAPIHandlerError(t sweet.T) {
-	server := newServer()
+	server := newServer(20)
 	server.handlers = append(server.handlers, NoopHandler)
 	server.handlers = append(server.handlers, ConditionalHandler)
 	server.handlers = append(server.handlers, ErrorHandler)
@@ -93,7 +93,7 @@ func (s *ServerSuite) TestAPIHandlerError(t sweet.T) {
 }
 
 func (s *ServerSuite) TestAPIHandlerNotFound(t sweet.T) {
-	server := newServer()
+	server := newServer(20)
 	server.handlers = append(server.handlers, NoopHandler)
 	server.handlers = append(server.handlers, ConditionalHandler)
 	server.handlers = append(server.handlers, NoopHandler)
@@ -101,6 +101,26 @@ func (s *ServerSuite) TestAPIHandlerNotFound(t sweet.T) {
 	resp := server.apiHandler(makeRequest("GET", "/wxy", bytes.NewReader(nil)))
 	Expect(resp).NotTo(BeNil())
 	Expect(resp.StatusCode).To(Equal(http.StatusNotFound))
+}
+
+func (s *ServerSuite) TestAPIHandlerMaxRequestLog(t sweet.T) {
+	server := newServer(5)
+	server.handlers = append(server.handlers, NoopHandler)
+
+	server.apiHandler(makeRequest("GET", "/xyz", bytes.NewReader([]byte("a"))))
+	server.apiHandler(makeRequest("GET", "/xyz", bytes.NewReader([]byte("b"))))
+	server.apiHandler(makeRequest("GET", "/xyz", bytes.NewReader([]byte("c"))))
+	server.apiHandler(makeRequest("GET", "/xyz", bytes.NewReader([]byte("d"))))
+	server.apiHandler(makeRequest("GET", "/xyz", bytes.NewReader([]byte("e"))))
+	server.apiHandler(makeRequest("GET", "/xyz", bytes.NewReader([]byte("f"))))
+	server.apiHandler(makeRequest("GET", "/xyz", bytes.NewReader([]byte("g"))))
+
+	Expect(server.requests).To(HaveLen(5))
+	Expect(server.requests[0].Body).To(Equal("c"))
+	Expect(server.requests[1].Body).To(Equal("d"))
+	Expect(server.requests[2].Body).To(Equal("e"))
+	Expect(server.requests[3].Body).To(Equal("f"))
+	Expect(server.requests[4].Body).To(Equal("g"))
 }
 
 func (s *ServerSuite) TestConvertRequest(t sweet.T) {

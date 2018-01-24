@@ -15,6 +15,7 @@ const negroniLogTemplate = `{{.Method}} {{.Path}} -> {{.Status}}`
 
 var (
 	registrationPath = kingpin.Flag("registration-path", "Path to file with _control/register payloads").String()
+	maxRequestLog    = kingpin.Flag("max-request-log", "Maximum number of requests to hold in memory").Default("100").Int()
 )
 
 func main() {
@@ -41,7 +42,7 @@ func run() error {
 		return err
 	}
 
-	server := newServer()
+	server := newServer(*maxRequestLog)
 	for _, handler := range handlers {
 		server.addHandler(handler)
 	}

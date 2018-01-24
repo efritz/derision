@@ -13,10 +13,11 @@ import (
 
 type (
 	server struct {
-		handlers []handler
-		requests []*request
-		logger   *log.Logger
-		mutex    sync.RWMutex
+		maxRequestLog int
+		handlers      []handler
+		requests      []*request
+		logger        *log.Logger
+		mutex         sync.RWMutex
 	}
 
 	handler func(r *request) (*response.Response, error)
@@ -29,11 +30,12 @@ type (
 	}
 )
 
-func newServer() *server {
+func newServer(maxRequestLog int) *server {
 	return &server{
-		handlers: []handler{},
-		requests: []*request{},
-		logger:   log.New(os.Stdout, "[derision] ", 0),
+		maxRequestLog: maxRequestLog,
+		handlers:      []handler{},
+		requests:      []*request{},
+		logger:        log.New(os.Stdout, "[derision] ", 0),
 	}
 }
 
@@ -89,9 +91,7 @@ func (s *server) apiHandler(r *http.Request) *response.Response {
 		return s.makeError("Failed to convert request (%s)", err.Error())
 	}
 
-	s.mutex.Lock()
-	s.requests = append(s.requests, req)
-	s.mutex.Unlock()
+	s.addRequest(req)
 
 	for _, handler := range s.handlers {
 		response, err := handler(req)
@@ -107,6 +107,23 @@ func (s *server) apiHandler(r *http.Request) *response.Response {
 	resp := s.makeError("No matching handler registered for request")
 	resp.SetStatusCode(http.StatusNotFound)
 	return resp
+}
+
+func (s *server) addRequest(req *request) {
+	s.mutex.Lock()
+	s.requests = append(s.requests, req)
+	s.pruneRequests()
+	s.mutex.Unlock()
+}
+
+func (s *server) pruneRequests() {
+	if s.maxRequestLog == 0 {
+		return
+	}
+
+	for len(s.requests) > s.maxRequestLog {
+		s.requests = s.requests[1:]
+	}
 }
 
 //
