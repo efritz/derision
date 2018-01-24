@@ -29,7 +29,7 @@ func main() {
 				fmt.Fprintf(os.Stderr, "    - %s\n", err)
 			}
 		} else {
-			fmt.Fprintf(os.Stderr, "error: %s", err.Error())
+			fmt.Fprintf(os.Stderr, "error: %s\n", err.Error())
 		}
 
 		os.Exit(1)
