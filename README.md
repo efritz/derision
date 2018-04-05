@@ -63,16 +63,20 @@ $ curl -v http://localhost:5000/_control/requests
 < HTTP/1.1 200 OK
 < Content-Type: application/json
 < Date: Sat, 20 Jan 2018 17:24:22 GMT
-< Content-Length: 106
+< Content-Length: 156
 <
 [{
     "method": "GET",
-    "path": "\/users\/123",
+    "path": "/users/123",
     "headers": {
-        "Accept": ["*\/*"],
-        "User-Agent": ["curl\/7.54.0"]
+        "Accept": ["*/*"],
+        "User-Agent": ["curl/7.54.0"]
     },
-    "body": ""
+    "body": "",
+    "raw_body": "",
+    "form": {},
+    "files": {},
+    "raw_files": {}
 }]
 ```
 

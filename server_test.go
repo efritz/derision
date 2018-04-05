@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 
 	"github.com/aphistic/sweet"
@@ -117,6 +118,58 @@ func (s *ServerSuite) TestConvertRequest(t sweet.T) {
 	Expect(req.Headers).To(Equal(map[string][]string{
 		"X-Foo": []string{"bar"},
 		"X-Bar": []string{"baz"},
+	}))
+}
+
+func (s *ServerSuite) TestConvertRequestForm(t sweet.T) {
+	r := makeRequest("POST", "http://derision.io:8080/xyz/123", bytes.NewReader([]byte("a=x&a=y&b=z")))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	req, err := convertRequest(r)
+	Expect(err).To(BeNil())
+
+	Expect(req.Form).To(Equal(map[string][]string{
+		"a": []string{"x", "y"},
+		"b": []string{"z"},
+	}))
+}
+
+func (s *ServerSuite) TestConvertRequestMultipart(t sweet.T) {
+	var (
+		body   = &bytes.Buffer{}
+		writer = multipart.NewWriter(body)
+	)
+
+	part1, _ := writer.CreateFormFile("field1", "file1.txt")
+	part1.Write([]byte("file content #1"))
+
+	part2, _ := writer.CreateFormFile("field2", "file2.txt")
+	part2.Write([]byte("file content #2"))
+
+	part3, _ := writer.CreateFormFile("field3", "file3.txt")
+	part3.Write([]byte("file content #3"))
+
+	writer.WriteField("a", "x")
+	writer.WriteField("b", "y")
+	writer.WriteField("c", "z")
+	writer.Close()
+
+	r := makeRequest("POST", "http://derision.io:8080/xyz/123", body)
+	r.Header.Add("Content-Type", writer.FormDataContentType())
+
+	req, err := convertRequest(r)
+	Expect(err).To(BeNil())
+
+	Expect(req.Files).To(Equal(map[string]string{
+		"file1.txt": "file content #1",
+		"file2.txt": "file content #2",
+		"file3.txt": "file content #3",
+	}))
+
+	Expect(req.Form).To(Equal(map[string][]string{
+		"a": []string{"x"},
+		"b": []string{"y"},
+		"c": []string{"z"},
 	}))
 }
 

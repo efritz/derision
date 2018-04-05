@@ -1,8 +1,6 @@
 package main
 
-import (
-	"regexp"
-)
+import "regexp"
 
 type (
 	expectation struct {

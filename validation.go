@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"regexp"
 
 	"github.com/xeipuuv/gojsonschema"
@@ -76,7 +77,9 @@ const handlerSchema = `
 `
 
 func readAndValidate(rc io.ReadCloser) (*expectation, *template, error) {
-	input, err := readAll(rc)
+	defer rc.Close()
+
+	input, err := ioutil.ReadAll(rc)
 	if err != nil {
 		return nil, nil, err
 	}

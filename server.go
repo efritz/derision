@@ -1,11 +1,14 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/efritz/response"
@@ -22,12 +25,21 @@ type (
 	handler func(r *request) (*response.Response, error)
 
 	request struct {
-		Method  string              `json:"method"`
-		Path    string              `json:"path"`
-		Headers map[string][]string `json:"headers"`
-		Body    string              `json:"body"`
+		Method   string              `json:"method"`
+		Path     string              `json:"path"`
+		Headers  map[string][]string `json:"headers"`
+		Body     string              `json:"body"`
+		RawBody  string              `json:"raw_body"`
+		Form     map[string][]string `json:"form"`
+		Files    map[string]string   `json:"files"`
+		RawFiles map[string]string   `json:"raw_files"`
 	}
 )
+
+var prefixMap = map[string]func(*http.Request, *request) error{
+	"application/x-www-form-urlencoded": populateForm,
+	"multipart/form-data":               populateMultipart,
+}
 
 func newServer() *server {
 	return &server{
@@ -71,8 +83,12 @@ func (s *server) requestsHandler(r *http.Request) *response.Response {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
+	// Get a local ref to the request log so if we
+	// clear it in the lines below we still have
+	// something to serialize.
 	requests := s.requests
 
+	// Drop the request log
 	if r.URL.Query().Get("clear") != "" {
 		s.requests = s.requests[:0]
 	}
@@ -142,21 +158,90 @@ func (s *server) makeDetailedError(details []string, format string, args ...inte
 }
 
 //
-// Helpers
+// Snapshot
 
 func convertRequest(r *http.Request) (*request, error) {
-	data, err := readAll(r.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	return &request{
+	snapshot := &request{
 		Method:  r.Method,
 		Path:    r.URL.Path,
 		Headers: r.Header,
-		Body:    string(data),
-	}, nil
+	}
+
+	for prefix, fn := range prefixMap {
+		if strings.HasPrefix(r.Header.Get("Content-Type"), prefix) {
+			return snapshot, fn(r, snapshot)
+		}
+	}
+
+	return snapshot, populateBody(r, snapshot)
 }
+
+func populateForm(r *http.Request, snapshot *request) error {
+	if err := r.ParseForm(); err != nil {
+		return err
+	}
+
+	snapshot.Form = r.PostForm
+	snapshot.Files = map[string]string{}
+	snapshot.RawFiles = map[string]string{}
+	snapshot.Body = ""
+	snapshot.RawBody = ""
+	return nil
+}
+
+func populateMultipart(r *http.Request, snapshot *request) error {
+	if err := r.ParseMultipartForm(2e7); err != nil {
+		return err
+	}
+
+	var (
+		files    = map[string]string{}
+		rawFiles = map[string]string{}
+	)
+
+	for _, headers := range r.MultipartForm.File {
+		for _, header := range headers {
+			file, err := header.Open()
+			if err != nil {
+				return err
+			}
+
+			defer file.Close()
+
+			content, err := ioutil.ReadAll(file)
+			if err != nil {
+				return err
+			}
+
+			files[header.Filename] = string(content)
+			rawFiles[header.Filename] = base64.StdEncoding.EncodeToString(content)
+		}
+	}
+
+	snapshot.Files = files
+	snapshot.RawFiles = rawFiles
+	snapshot.Form = r.MultipartForm.Value
+	snapshot.Body = ""
+	snapshot.RawBody = ""
+	return nil
+}
+
+func populateBody(r *http.Request, snapshot *request) error {
+	data, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+
+	snapshot.Files = map[string]string{}
+	snapshot.RawFiles = map[string]string{}
+	snapshot.Form = map[string][]string{}
+	snapshot.Body = string(data)
+	snapshot.RawBody = base64.StdEncoding.EncodeToString(data)
+	return nil
+}
+
+//
+// Helpers
 
 func makeHandler(r io.ReadCloser) (handler, error) {
 	expectation, template, err := readAndValidate(r)
