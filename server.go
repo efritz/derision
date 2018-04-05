@@ -37,16 +37,12 @@ type (
 	}
 )
 
-<<<<<<< HEAD
 var prefixMap = map[string]func(*http.Request, *request) error{
 	"application/x-www-form-urlencoded": populateForm,
 	"multipart/form-data":               populateMultipart,
 }
 
-func newServer() *server {
-=======
 func newServer(maxRequestLog int) *server {
->>>>>>> be8780fb3b6e4241b7f2cc40bc7e7ef329a14410
 	return &server{
 		maxRequestLog: maxRequestLog,
 		handlers:      []handler{},
@@ -111,11 +107,7 @@ func (s *server) apiHandler(r *http.Request) *response.Response {
 		return s.makeError("Failed to convert request (%s)", err.Error())
 	}
 
-<<<<<<< HEAD
-	s.logRequest(req)
-=======
 	s.addRequest(req)
->>>>>>> be8780fb3b6e4241b7f2cc40bc7e7ef329a14410
 
 	for _, handler := range s.handlers {
 		response, err := handler(req)
@@ -133,18 +125,6 @@ func (s *server) apiHandler(r *http.Request) *response.Response {
 	return resp
 }
 
-<<<<<<< HEAD
-func (s *server) logRequest(req *request) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	// Add this request to the log
-	s.requests = append(s.requests, req)
-
-	// Ensure we don't use unlimited memory if no
-	// one is checking the control endpoints
-	if len(s.requests) > requestLogCapacity {
-=======
 func (s *server) addRequest(req *request) {
 	s.mutex.Lock()
 	s.requests = append(s.requests, req)
@@ -158,7 +138,6 @@ func (s *server) pruneRequests() {
 	}
 
 	for len(s.requests) > s.maxRequestLog {
->>>>>>> be8780fb3b6e4241b7f2cc40bc7e7ef329a14410
 		s.requests = s.requests[1:]
 	}
 }

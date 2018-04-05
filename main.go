@@ -4,10 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-<<<<<<< HEAD
-	"strconv"
-=======
->>>>>>> be8780fb3b6e4241b7f2cc40bc7e7ef329a14410
 
 	"github.com/alecthomas/kingpin"
 	"github.com/efritz/response"
@@ -15,12 +11,7 @@ import (
 	"github.com/urfave/negroni"
 )
 
-const (
-	defaultRequestLogCapacity = 100
-	negroniLogTemplate        = `{{.Method}} {{.Path}} -> {{.Status}}`
-)
-
-var requestLogCapacity = defaultRequestLogCapacity
+const negroniLogTemplate = `{{.Method}} {{.Path}} -> {{.Status}}`
 
 var (
 	registrationPath = kingpin.Flag("registration-path", "Path to file with _control/register payloads").String()
@@ -28,13 +19,6 @@ var (
 )
 
 func main() {
-<<<<<<< HEAD
-	if err := parseRequestLogCapacity(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: Could not parse request log capacity\n")
-		os.Exit(1)
-	}
-
-=======
 	kingpin.Parse()
 
 	if err := run(); err != nil {
@@ -64,7 +48,6 @@ func run() error {
 	}
 
 	// Setup logging
->>>>>>> be8780fb3b6e4241b7f2cc40bc7e7ef329a14410
 	logger := negroni.NewLogger()
 	logger.SetFormat(negroniLogTemplate)
 
@@ -83,17 +66,4 @@ func makeRouter(s *server) *mux.Router {
 	r.NotFoundHandler = http.HandlerFunc(response.Convert(s.apiHandler))
 
 	return r
-}
-
-func parseRequestLogCapacity() error {
-	if raw, ok := os.LookupEnv("REQUEST_LOG_CAPACITY"); ok && raw != "" {
-		val, err := strconv.Atoi(raw)
-		if err != nil {
-			return err
-		}
-
-		requestLogCapacity = val
-	}
-
-	return nil
 }
