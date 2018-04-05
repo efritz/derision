@@ -1,16 +1,29 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
+	"os"
+	"strconv"
 
 	"github.com/efritz/response"
 	"github.com/gorilla/mux"
 	"github.com/urfave/negroni"
 )
 
-const negroniLogTemplate = `{{.Method}} {{.Path}} -> {{.Status}}`
+const (
+	defaultRequestLogCapacity = 100
+	negroniLogTemplate        = `{{.Method}} {{.Path}} -> {{.Status}}`
+)
+
+var requestLogCapacity = defaultRequestLogCapacity
 
 func main() {
+	if err := parseRequestLogCapacity(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: Could not parse request log capacity\n")
+		os.Exit(1)
+	}
+
 	logger := negroni.NewLogger()
 	logger.SetFormat(negroniLogTemplate)
 
@@ -27,4 +40,17 @@ func makeRouter(s *server) *mux.Router {
 	r.NotFoundHandler = http.HandlerFunc(response.Convert(s.apiHandler))
 
 	return r
+}
+
+func parseRequestLogCapacity() error {
+	if raw, ok := os.LookupEnv("REQUEST_LOG_CAPACITY"); ok && raw != "" {
+		val, err := strconv.Atoi(raw)
+		if err != nil {
+			return err
+		}
+
+		requestLogCapacity = val
+	}
+
+	return nil
 }

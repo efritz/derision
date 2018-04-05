@@ -86,9 +86,7 @@ func (s *server) apiHandler(r *http.Request) *response.Response {
 		return s.makeError("Failed to convert request (%s)", err.Error())
 	}
 
-	s.mutex.Lock()
-	s.requests = append(s.requests, req)
-	s.mutex.Unlock()
+	s.logRequest(req)
 
 	for _, handler := range s.handlers {
 		response, err := handler(req)
@@ -104,6 +102,20 @@ func (s *server) apiHandler(r *http.Request) *response.Response {
 	resp := s.makeError("No matching handler registered for request")
 	resp.SetStatusCode(http.StatusNotFound)
 	return resp
+}
+
+func (s *server) logRequest(req *request) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	// Add this request to the log
+	s.requests = append(s.requests, req)
+
+	// Ensure we don't use unlimited memory if no
+	// one is checking the control endpoints
+	if len(s.requests) > requestLogCapacity {
+		s.requests = s.requests[1:]
+	}
 }
 
 //
