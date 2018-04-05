@@ -16,10 +16,11 @@ import (
 
 type (
 	server struct {
-		handlers []handler
-		requests []*request
-		logger   *log.Logger
-		mutex    sync.RWMutex
+		maxRequestLog int
+		handlers      []handler
+		requests      []*request
+		logger        *log.Logger
+		mutex         sync.RWMutex
 	}
 
 	handler func(r *request) (*response.Response, error)
@@ -36,16 +37,21 @@ type (
 	}
 )
 
+<<<<<<< HEAD
 var prefixMap = map[string]func(*http.Request, *request) error{
 	"application/x-www-form-urlencoded": populateForm,
 	"multipart/form-data":               populateMultipart,
 }
 
 func newServer() *server {
+=======
+func newServer(maxRequestLog int) *server {
+>>>>>>> be8780fb3b6e4241b7f2cc40bc7e7ef329a14410
 	return &server{
-		handlers: []handler{},
-		requests: []*request{},
-		logger:   log.New(os.Stdout, "[derision] ", 0),
+		maxRequestLog: maxRequestLog,
+		handlers:      []handler{},
+		requests:      []*request{},
+		logger:        log.New(os.Stdout, "[derision] ", 0),
 	}
 }
 
@@ -64,11 +70,14 @@ func (s *server) registerHandler(r *http.Request) *response.Response {
 		return s.makeError("Failed to make handler (%s)", err.Error())
 	}
 
+	s.addHandler(handler)
+	return response.Empty(http.StatusNoContent)
+}
+
+func (s *server) addHandler(handler handler) {
 	s.mutex.Lock()
 	s.handlers = append(s.handlers, handler)
-	s.mutex.Unlock()
-
-	return response.Empty(http.StatusNoContent)
+	defer s.mutex.Unlock()
 }
 
 func (s *server) clearHandler(r *http.Request) *response.Response {
@@ -102,7 +111,11 @@ func (s *server) apiHandler(r *http.Request) *response.Response {
 		return s.makeError("Failed to convert request (%s)", err.Error())
 	}
 
+<<<<<<< HEAD
 	s.logRequest(req)
+=======
+	s.addRequest(req)
+>>>>>>> be8780fb3b6e4241b7f2cc40bc7e7ef329a14410
 
 	for _, handler := range s.handlers {
 		response, err := handler(req)
@@ -120,6 +133,7 @@ func (s *server) apiHandler(r *http.Request) *response.Response {
 	return resp
 }
 
+<<<<<<< HEAD
 func (s *server) logRequest(req *request) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -130,6 +144,21 @@ func (s *server) logRequest(req *request) {
 	// Ensure we don't use unlimited memory if no
 	// one is checking the control endpoints
 	if len(s.requests) > requestLogCapacity {
+=======
+func (s *server) addRequest(req *request) {
+	s.mutex.Lock()
+	s.requests = append(s.requests, req)
+	s.pruneRequests()
+	s.mutex.Unlock()
+}
+
+func (s *server) pruneRequests() {
+	if s.maxRequestLog == 0 {
+		return
+	}
+
+	for len(s.requests) > s.maxRequestLog {
+>>>>>>> be8780fb3b6e4241b7f2cc40bc7e7ef329a14410
 		s.requests = s.requests[1:]
 	}
 }

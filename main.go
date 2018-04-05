@@ -4,8 +4,12 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+<<<<<<< HEAD
 	"strconv"
+=======
+>>>>>>> be8780fb3b6e4241b7f2cc40bc7e7ef329a14410
 
+	"github.com/alecthomas/kingpin"
 	"github.com/efritz/response"
 	"github.com/gorilla/mux"
 	"github.com/urfave/negroni"
@@ -18,18 +22,57 @@ const (
 
 var requestLogCapacity = defaultRequestLogCapacity
 
+var (
+	registrationPath = kingpin.Flag("registration-path", "Path to file with _control/register payloads").String()
+	maxRequestLog    = kingpin.Flag("max-request-log", "Maximum number of requests to hold in memory").Default("100").Int()
+)
+
 func main() {
+<<<<<<< HEAD
 	if err := parseRequestLogCapacity(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: Could not parse request log capacity\n")
 		os.Exit(1)
 	}
 
+=======
+	kingpin.Parse()
+
+	if err := run(); err != nil {
+		if verr, ok := err.(*validationError); ok {
+			fmt.Fprintf(os.Stderr, "error: failed to validate registration file:\n")
+
+			for _, err := range verr.errors {
+				fmt.Fprintf(os.Stderr, "    - %s\n", err)
+			}
+		} else {
+			fmt.Fprintf(os.Stderr, "error: %s\n", err.Error())
+		}
+
+		os.Exit(1)
+	}
+}
+
+func run() error {
+	handlers, err := makeHandlersFromFile(*registrationPath)
+	if err != nil {
+		return err
+	}
+
+	server := newServer(*maxRequestLog)
+	for _, handler := range handlers {
+		server.addHandler(handler)
+	}
+
+	// Setup logging
+>>>>>>> be8780fb3b6e4241b7f2cc40bc7e7ef329a14410
 	logger := negroni.NewLogger()
 	logger.SetFormat(negroniLogTemplate)
 
+	// Start the server
 	negroni := negroni.New(negroni.NewRecovery(), logger)
-	negroni.UseHandler(makeRouter(newServer()))
+	negroni.UseHandler(makeRouter(server))
 	negroni.Run("0.0.0.0:5000")
+	return nil
 }
 
 func makeRouter(s *server) *mux.Router {
