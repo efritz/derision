@@ -1,26 +1,27 @@
+env:
+  global:
+    - CC_TEST_REPORTER_ID=dbdf4ee7f398b306062f9fbd160fc5efc161b2a5744cd4f4a44e6aaded7ca0d8
 language: go
-
 go:
-    - 1.9
-
+  - 1.9.x
+  - 1.10.x
+  - tip
+before_script:
+  - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+  - chmod +x ./cc-test-reporter
+  - ./cc-test-reporter before-build
 script:
-    - go test -coverprofile=coverage.txt -covermode=atomic
-    - GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build
-
-after_success:
-    - bash <(curl -s https://codecov.io/bash)
-
-addons:
-    code_climate:
-        repo_token: dbdf4ee7f398b306062f9fbd160fc5efc161b2a5744cd4f4a44e6aaded7ca0d8
-
+  - go test -coverprofile=c.out -covermode=atomic
+  - GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build
+after_script:
+  - ./cc-test-reporter after-build --coverage-input-type gocov --exit-code $TRAVIS_TEST_RESULT
 deploy:
-    provider: releases
-    file:
-        - derision
-    skip_cleanup: true
-    on:
-        repo: efritz/derision
-        tags: true
-    api_key:
-        secure: mWW+fa2+9E4QwcGwuCKOwQQobApGC+vZ1RuEMv+NLWIva8uwA2OLQpRsuk/MHYCMvH530Pl+ErwXop6Uzqmzb2AwZuHYyR0uK/5khwnFT3rObblOr0F8zoX9+ipA3UkYFTEk+GYPnDfbGXnG8kYYIpjPi7YqGzqnDEP3Z8kJAPYLi9MI/G8Q3b7yqB0xq3x99oKNc5QQDNqMM/7+BBQL0ClIuv5fVB4RWKYGMOlJ724nj94aIIUw1LQCGUgHoAUkBO6sI525jeLRtIWYtPR87IBaw9r40p7eii7JGS28PWRvbS/SB+z6rptnrlR8VFM9QH1jPTAA1SMgHjdWkQbfmFmMP40YCgmqP6pFE/KwQbBaQp3w0TLoQgKCUxAvXk+BepZwGfamHresNkKuXOhgEvJIA2852xUbHfV7P3ahMBI7ganx3qUSCRUawbU4wHekrnHAtjG7Iz+2Ip2VzJ89D7GMDOhaKryh1qtGuLOY7jhw6eRAZ+68GwkAIOEonR2TpfLMvXbq3ERdx44zUSORiuL2DDyVkfmUd5OTJBLAkgYjNVAZrbsbuSNGogo73I9pr/g060KqbR559nWJldTL8AAwTcZNyx+QYJm02LgyJvMvDB4lRm7MMG0Kz+4zHO3V3ek+l6AnOmKiEMLpXqPb7ZmG9HGSgJb0mqDciKF81WY=
+  provider: releases
+  file:
+    - derision
+  skip_cleanup: true
+  on:
+    repo: efritz/derision
+    tags: true
+  api_key:
+    secure: mWW+fa2+9E4QwcGwuCKOwQQobApGC+vZ1RuEMv+NLWIva8uwA2OLQpRsuk/MHYCMvH530Pl+ErwXop6Uzqmzb2AwZuHYyR0uK/5khwnFT3rObblOr0F8zoX9+ipA3UkYFTEk+GYPnDfbGXnG8kYYIpjPi7YqGzqnDEP3Z8kJAPYLi9MI/G8Q3b7yqB0xq3x99oKNc5QQDNqMM/7+BBQL0ClIuv5fVB4RWKYGMOlJ724nj94aIIUw1LQCGUgHoAUkBO6sI525jeLRtIWYtPR87IBaw9r40p7eii7JGS28PWRvbS/SB+z6rptnrlR8VFM9QH1jPTAA1SMgHjdWkQbfmFmMP40YCgmqP6pFE/KwQbBaQp3w0TLoQgKCUxAvXk+BepZwGfamHresNkKuXOhgEvJIA2852xUbHfV7P3ahMBI7ganx3qUSCRUawbU4wHekrnHAtjG7Iz+2Ip2VzJ89D7GMDOhaKryh1qtGuLOY7jhw6eRAZ+68GwkAIOEonR2TpfLMvXbq3ERdx44zUSORiuL2DDyVkfmUd5OTJBLAkgYjNVAZrbsbuSNGogo73I9pr/g060KqbR559nWJldTL8AAwTcZNyx+QYJm02LgyJvMvDB4lRm7MMG0Kz+4zHO3V3ek+l6AnOmKiEMLpXqPb7ZmG9HGSgJb0mqDciKF81WY=

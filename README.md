@@ -2,8 +2,8 @@
 
 [![GoDoc](https://godoc.org/github.com/efritz/derision?status.svg)](https://godoc.org/github.com/efritz/derision)
 [![Build Status](https://secure.travis-ci.org/efritz/derision.png)](http://travis-ci.org/efritz/derision)
-[![Code Coverage](http://codecov.io/github/efritz/derision/coverage.svg?branch=master)](http://codecov.io/github/efritz/derision?branch=master)
-[![Go Report Card](https://goreportcard.com/badge/github.com/efritz/derision)](https://goreportcard.com/report/github.com/efritz/derision)
+[![Maintainability](https://api.codeclimate.com/v1/badges/289a6ddd42c61a92adcf/maintainability)](https://codeclimate.com/github/efritz/derision/maintainability)
+[![Test Coverage](https://api.codeclimate.com/v1/badges/289a6ddd42c61a92adcf/test_coverage)](https://codeclimate.com/github/efritz/derision/test_coverage)
 
 A logging mock HTTP API for integration testing. Under development.
 
