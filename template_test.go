@@ -37,11 +37,11 @@ func (s *TemplateSuite) TestRespond(t sweet.T) {
 	resp, err := template.Respond(r, m)
 	Expect(err).To(BeNil())
 
-	Expect(resp.StatusCode).To(Equal(http.StatusOK))
-	Expect(resp.GetHeader("X-Test")).To(Equal("yes"))
-	Expect(resp.GetHeader("X-Path")).To(Equal("/users/123"))
-	Expect(resp.GetHeader("X-Meth")).To(Equal("GET"))
-	Expect(resp.GetHeader("X-Type")).To(Equal("json"))
+	Expect(resp.StatusCode()).To(Equal(http.StatusOK))
+	Expect(resp.Header("X-Test")).To(Equal("yes"))
+	Expect(resp.Header("X-Path")).To(Equal("/users/123"))
+	Expect(resp.Header("X-Meth")).To(Equal("GET"))
+	Expect(resp.Header("X-Type")).To(Equal("json"))
 	Expect(getBody(resp)).To(Equal("You requested details for user 123."))
 }
 

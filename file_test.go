@@ -20,7 +20,6 @@ func (s *FileSuite) TestMakeHandlersFromFileMalformed(t sweet.T) {
 func (s *FileSuite) TestMakeHandlersFromFileUnprocessable(t sweet.T) {
 	_, err := makeHandlersFromFile("test/unprocessable.json")
 	Expect(err).NotTo(BeNil())
-	Expect(err.Error()).To(MatchRegexp("expected a JSON array (.*)"))
 }
 
 func (s *FileSuite) TestMakeHandlersFromFileInvalid(t sweet.T) {

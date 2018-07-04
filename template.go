@@ -18,7 +18,7 @@ type (
 	}
 )
 
-func (t *template) Respond(r *request, m *match) (*response.Response, error) {
+func (t *template) Respond(r *request, m *match) (response.Response, error) {
 	args := map[string]interface{}{
 		"Method":       r.Method,
 		"Path":         r.Path,
@@ -58,7 +58,7 @@ func (t *template) Respond(r *request, m *match) (*response.Response, error) {
 				return nil, err
 			}
 
-			resp.Header.Add(header, val)
+			resp.AddHeader(header, val)
 		}
 	}
 
