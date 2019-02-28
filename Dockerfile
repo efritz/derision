@@ -4,4 +4,4 @@ RUN chmod +x derision
 
 FROM scratch
 COPY --from=0 /derision .
-ENTRYPOINT ["./derision"]
+ENTRYPOINT ["/derision"]
