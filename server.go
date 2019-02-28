@@ -23,7 +23,7 @@ type (
 		mutex         sync.RWMutex
 	}
 
-	handler func(r *request) (*response.Response, error)
+	handler func(r *request) (response.Response, error)
 
 	request struct {
 		Method   string              `json:"method"`
@@ -54,7 +54,7 @@ func newServer(maxRequestLog int) *server {
 //
 // Handlers
 
-func (s *server) registerHandler(r *http.Request) *response.Response {
+func (s *server) registerHandler(r *http.Request) response.Response {
 	handler, err := makeHandler(r.Body)
 	if err != nil {
 		if verr, ok := err.(*validationError); ok {
@@ -76,7 +76,7 @@ func (s *server) addHandler(handler handler) {
 	defer s.mutex.Unlock()
 }
 
-func (s *server) clearHandler(r *http.Request) *response.Response {
+func (s *server) clearHandler(r *http.Request) response.Response {
 	s.mutex.Lock()
 	s.handlers = s.handlers[:0]
 	s.mutex.Unlock()
@@ -84,7 +84,7 @@ func (s *server) clearHandler(r *http.Request) *response.Response {
 	return response.Empty(http.StatusNoContent)
 }
 
-func (s *server) requestsHandler(r *http.Request) *response.Response {
+func (s *server) requestsHandler(r *http.Request) response.Response {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -101,7 +101,7 @@ func (s *server) requestsHandler(r *http.Request) *response.Response {
 	return response.JSON(requests)
 }
 
-func (s *server) apiHandler(r *http.Request) *response.Response {
+func (s *server) apiHandler(r *http.Request) response.Response {
 	req, err := convertRequest(r)
 	if err != nil {
 		return s.makeError("Failed to convert request (%s)", err.Error())
@@ -145,11 +145,11 @@ func (s *server) pruneRequests() {
 //
 // Errors
 
-func (s *server) makeError(format string, args ...interface{}) *response.Response {
+func (s *server) makeError(format string, args ...interface{}) response.Response {
 	return s.makeDetailedError(nil, format, args...)
 }
 
-func (s *server) makeDetailedError(details []string, format string, args ...interface{}) *response.Response {
+func (s *server) makeDetailedError(details []string, format string, args ...interface{}) response.Response {
 	s.logger.Printf(format, args...)
 
 	payload := map[string]interface{}{
@@ -257,7 +257,7 @@ func makeHandler(r io.ReadCloser) (handler, error) {
 		return nil, err
 	}
 
-	handler := func(r *request) (*response.Response, error) {
+	handler := func(r *request) (response.Response, error) {
 		if match := expectation.Matches(r); match != nil {
 			return template.Respond(r, match)
 		}

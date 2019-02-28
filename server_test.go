@@ -24,7 +24,7 @@ func (s *ServerSuite) TestRegisterHandler(t sweet.T) {
 		"response": {"body": "foo"}
 	}`))))
 
-	Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
+	Expect(resp.StatusCode()).To(Equal(http.StatusNoContent))
 	Expect(server.handlers).To(HaveLen(1))
 	testHandlerBehavior(server.handlers[0])
 }
@@ -38,7 +38,7 @@ func (s *ServerSuite) TestClearHandler(t sweet.T) {
 	server.handlers = append(server.handlers, NoopHandler)
 
 	resp := server.clearHandler(makeRequest("GET", "http://derision.io/_control/clear", nil))
-	Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
+	Expect(resp.StatusCode()).To(Equal(http.StatusNoContent))
 	Expect(server.handlers).To(BeEmpty())
 }
 
@@ -78,7 +78,7 @@ func (s *ServerSuite) TestAPIHandler(t sweet.T) {
 
 	resp := server.apiHandler(makeRequest("GET", "/xyz", bytes.NewReader(nil)))
 	Expect(resp).NotTo(BeNil())
-	Expect(resp.StatusCode).To(Equal(http.StatusOK))
+	Expect(resp.StatusCode()).To(Equal(http.StatusOK))
 	Expect(getBody(resp)).To(Equal(`["foo","bar","baz"]`))
 }
 
@@ -90,7 +90,7 @@ func (s *ServerSuite) TestAPIHandlerError(t sweet.T) {
 
 	resp := server.apiHandler(makeRequest("GET", "/wxy", bytes.NewReader(nil)))
 	Expect(resp).NotTo(BeNil())
-	Expect(resp.StatusCode).To(Equal(http.StatusInternalServerError))
+	Expect(resp.StatusCode()).To(Equal(http.StatusInternalServerError))
 }
 
 func (s *ServerSuite) TestAPIHandlerNotFound(t sweet.T) {
@@ -101,7 +101,7 @@ func (s *ServerSuite) TestAPIHandlerNotFound(t sweet.T) {
 
 	resp := server.apiHandler(makeRequest("GET", "/wxy", bytes.NewReader(nil)))
 	Expect(resp).NotTo(BeNil())
-	Expect(resp.StatusCode).To(Equal(http.StatusNotFound))
+	Expect(resp.StatusCode()).To(Equal(http.StatusNotFound))
 }
 
 func (s *ServerSuite) TestAPIHandlerMaxRequestLog(t sweet.T) {
@@ -232,8 +232,8 @@ func testHandlerBehavior(handler handler) {
 //
 // Helpers
 
-func getBody(resp *response.Response) string {
-	data, _ := response.Serialize(resp)
+func getBody(resp response.Response) string {
+	_, data, _ := response.Serialize(resp)
 	return string(data)
 }
 
@@ -253,15 +253,15 @@ func makeRequest(method, url string, body io.Reader) *http.Request {
 //
 // Mocks
 
-func NoopHandler(r *request) (*response.Response, error) {
+func NoopHandler(r *request) (response.Response, error) {
 	return nil, nil
 }
 
-func ErrorHandler(r *request) (*response.Response, error) {
+func ErrorHandler(r *request) (response.Response, error) {
 	return nil, fmt.Errorf("utoh")
 }
 
-func ConditionalHandler(r *request) (*response.Response, error) {
+func ConditionalHandler(r *request) (response.Response, error) {
 	if r.Path == "/xyz" {
 		return response.JSON([]string{"foo", "bar", "baz"}), nil
 	}

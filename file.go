@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+
+	"github.com/ghodss/yaml"
 )
 
 func makeHandlersFromFile(path string) ([]handler, error) {
@@ -33,7 +35,7 @@ func makeHandlersFromFile(path string) ([]handler, error) {
 	return handlers, nil
 }
 
-// Attempt to read a file formatteda as a JSON array. Will return
+// Attempt to read a file formatted as a JSON array. Will return
 // a byte slice for each element of the array on success and the
 // error on read or decode failure.
 func readFile(path string) ([][]byte, error) {
@@ -49,9 +51,14 @@ func readFile(path string) ([][]byte, error) {
 		return nil, err
 	}
 
+	jsonContent, err := yaml.YAMLToJSON(content)
+	if err != nil {
+		return nil, fmt.Errorf("failed to deserialize file (%s)", err.Error())
+	}
+
 	payload := []interface{}{}
-	if err := json.Unmarshal(content, &payload); err != nil {
-		return nil, fmt.Errorf("expected a JSON array (%s)", err.Error())
+	if err := json.Unmarshal(jsonContent, &payload); err != nil {
+		return nil, fmt.Errorf("failed to deserialize file (%s)", err.Error())
 	}
 
 	chunks := [][]byte{}
