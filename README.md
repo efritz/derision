@@ -5,24 +5,29 @@
 [![Maintainability](https://api.codeclimate.com/v1/badges/289a6ddd42c61a92adcf/maintainability)](https://codeclimate.com/github/efritz/derision/maintainability)
 [![Test Coverage](https://api.codeclimate.com/v1/badges/289a6ddd42c61a92adcf/test_coverage)](https://codeclimate.com/github/efritz/derision/test_coverage)
 
-A logging mock HTTP API for integration testing. Under development.
+A logging mock HTTP API for integration testing.
 
-## Example
+## Overview
 
-To start the server via docker, run the following command.
+Derision is an HTTP API that logs all incoming requests and can be configured
+on-the-fly to respond in a particular way to requests matching an expectation.
+
+Derision is packaged as a docker image. To start the server via docker, run
+the following command.
 
 ```bash
 docker run --rm -it -p 5000:5000 efritz/derision
 ```
 
-Then, before making any API requests to the server, register a set of request
-expectations and their corresponding response template. The following example
-creates a JSON response for a path matching a user route. Each field of the
-response must be a valid [Go template](https://golang.org/pkg/text/template/)
-which allows pulling portions of data from the request.
+To register an expectation, POST to the `/register` endpoint the expected HTTP
+request structure along with a response template. These fields are explained
+with more detail in the next section. Each endpoint that controls the behavior
+of the API must set the `X-Derision-Control` header.
+
+The following example creates a JSON response for a path matching a user route.
 
 ```bash
-curl -H 'Content-Type: application/json' -d '{
+curl -H 'X-Derision-Control: true' -X POST -d '{
     "request": {
         "path": "/users/(\\d+)"
     },
@@ -33,58 +38,103 @@ curl -H 'Content-Type: application/json' -d '{
         },
         "body": "{\"user_id\": {{ index (index .PathGroups 1) 1}}, \"username\": \"foobar\"}"
     }
-}' http://localhost:5000/_control/register
+}' http://localhost:5000/register
 ```
 
 Multiple expectations can be registered and are evaluated in-order. A request
-to the API that matches the expectation will receive a response based on the
-associated template. If a request does not match any expectation, the API will
-respond with an empty 404. All expectations can be cleared by performing a `POST`
-request to the `_control/clear` endpoint.
+to the API (without the X-Derision-Control header set) that matches the
+expectation will receive a response based on the associated template. If a
+request does not match any expectation, the API will respond with an empty 404.
+All such requests are logged for later inspection.
 
 The following curl command illustrates the above expectation.
 
 ```bash
 $ curl -v http://localhost:5000/users/123
 < HTTP/1.1 200 OK
+< Content-Length: 37
 < Content-Type: application/json
 < X-Request-Id: a1d2c5b8-b3d7-4e49-bd26-1e2dfee8eef5
-< Date: Sat, 20 Jan 2018 17:18:26 GMT
-< Content-Length: 37
+< Date: Wed, 10 Apr 2019 22:57:14 GMT
 <
 {"user_id": 50, "username": "foobar"}
 ```
 
-After making non-control requests to the API, the sequence of requests can be
-listed via the following endpoint.
+To retrieve the list of non-control requests made to the API, GET the `/requests`
+endpoint. This will return a chronologically ordered list of requests, including
+its method, path, headers, body, form, and file contents.
 
-```bash
-$ curl -v http://localhost:5000/_control/requests
-< HTTP/1.1 200 OK
-< Content-Type: application/json
-< Date: Sat, 20 Jan 2018 17:24:22 GMT
-< Content-Length: 156
-<
-[{
+```
+$ curl -H 'X-Derision-Control: true' http://localhost:5000/requests | jq
+[
+  {
     "method": "GET",
     "path": "/users/123",
     "headers": {
-        "Accept": ["*/*"],
-        "User-Agent": ["curl/7.54.0"]
+      "Accept": [
+        "*/*"
+      ],
+      "User-Agent": [
+        "curl/7.54.0"
+      ]
     },
     "body": "",
     "raw_body": "",
     "form": {},
     "files": {},
     "raw_files": {}
-}]
+  }
+]
 ```
 
-Requesting this with the `?clear=true` query parameter will truncate this list.
+Use a query string containing `?clear=true` to truncate the request log. By
+default, the log has an unbounded capacity and will record all requests. You can
+change this default behavior `REQUEST_LOG_CAPACITY` environment variable in the
+Docker command. If the log is bounded, then older requests will be pushed out of
+the log when new requests are made.
 
-## Response Templates
+Requests made to the API can also be *streamed* as they are made by users via the
+`/sse` endpoint. Multiple users can subscribe to the same event stream without
+conflict. This endpoint serves one
+[server-sent event](https://en.wikipedia.org/wiki/Server-sent_events) for each request.
+Only requests that are made to the API after subscribing to events will be seen (but
+they would still be available in the log given the log has capacity and has not been
+cleared).
 
-The following items are accessible within the response templates.
+```
+curl -H 'X-Derision-Control: true' http://localhost:5000/sse
+data:{"method": "GET", "path": "/test1", ...}
+
+data:{"method": "GET", "path": "/test2", ...}
+
+data:{"method": "GET", "path": "/test3", ...}
+```
+
+Control requests are not logged in either the request log or the request stream.
+
+Expectations may change over time in a testing scenario. Instead of having to
+restart the API container, all registered expectations can be removed by POSTing
+to the `/clear` endpoint, as follows.
+
+```bash
+curl -H 'X-Derision-Control: true' -X POST http://localhost:5000/clear
+```
+
+## Expectations
+
+A expectation consists of the fields `method`, `path`, `headers`, and `body`.
+Method, path, and body are regular expressions, and headers is a map from strings
+to regular expressions. Capturing groups are supported.
+
+A request matches an expectation if the method, path, headers, and body of the
+expectation respectively match the method, path, headers, and body of the request.
+
+A response template consists of the fields `status_code`, `headers`, and `body`.
+Each field of the response template must be a valid
+[Go template](https://golang.org/pkg/text/template/) which allows pulling portions
+of data from the request.
+
+The following variables are accessible within the response templates.
 
 | Name         | Description |
 | ------------ | ----------- |
@@ -96,6 +146,23 @@ The following items are accessible within the response templates.
 | PathGroups   | Groups captured from the pattern match on the request path |
 | HeaderGroups | Groups captured from the pattern match on a request header value (`string` to `[]string` pairs) |
 | BodyGroups   | Groups captured form the pattern match on the request body |
+
+## Static Configuration
+
+Expectations can be registered from a directory on API startup. The recommended
+way to do this is to either volume mount to the /config directory in the Docker
+container or to create a custom Docker image that uses efritz/derision as a base
+and ADD/COPY the files to the same directtory. For an example of the latter, see
+[efritz/derision-ok](https://github.com/efritz/derision-ok).
+
+Files are loaded in alphabetical order non-recursively from the configuration
+directory. Each file in the directory must be in YAML format -- notice that as
+YAML is a superset of JSON, they can also be JSON. Each file should contain a
+top-level list of items, each one being the same structure as a payload to the
+`/register` endpoint.
+
+All endpoints behave the same whether or not the API was configured from static
+files on startup. This means that expectations may change as the API is used.
 
 ## License
 

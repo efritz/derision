@@ -1,0 +1,8 @@
+- request:
+    path: /c1
+  response:
+    body: c1
+- request:
+    path: /c2
+  response:
+    body: c2

@@ -9,9 +9,7 @@ go:
   - 1.11.x
   - tip
 install: go mod vendor
-script:
-  - GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -mod vendor
-  - go test -mod vendor -tags=integration -coverprofile=c.out -covermode=atomic
+script: go test -coverprofile=c.out -covermode=atomic
 
 before_script:
   - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
@@ -19,14 +17,3 @@ before_script:
   - ./cc-test-reporter before-build
 after_script:
   - ./cc-test-reporter after-build --coverage-input-type gocov --exit-code $TRAVIS_TEST_RESULT
-
-deploy:
-  provider: releases
-  file:
-    - derision
-  skip_cleanup: true
-  on:
-    repo: efritz/derision
-    tags: true
-  api_key:
-    secure: mWW+fa2+9E4QwcGwuCKOwQQobApGC+vZ1RuEMv+NLWIva8uwA2OLQpRsuk/MHYCMvH530Pl+ErwXop6Uzqmzb2AwZuHYyR0uK/5khwnFT3rObblOr0F8zoX9+ipA3UkYFTEk+GYPnDfbGXnG8kYYIpjPi7YqGzqnDEP3Z8kJAPYLi9MI/G8Q3b7yqB0xq3x99oKNc5QQDNqMM/7+BBQL0ClIuv5fVB4RWKYGMOlJ724nj94aIIUw1LQCGUgHoAUkBO6sI525jeLRtIWYtPR87IBaw9r40p7eii7JGS28PWRvbS/SB+z6rptnrlR8VFM9QH1jPTAA1SMgHjdWkQbfmFmMP40YCgmqP6pFE/KwQbBaQp3w0TLoQgKCUxAvXk+BepZwGfamHresNkKuXOhgEvJIA2852xUbHfV7P3ahMBI7ganx3qUSCRUawbU4wHekrnHAtjG7Iz+2Ip2VzJ89D7GMDOhaKryh1qtGuLOY7jhw6eRAZ+68GwkAIOEonR2TpfLMvXbq3ERdx44zUSORiuL2DDyVkfmUd5OTJBLAkgYjNVAZrbsbuSNGogo73I9pr/g060KqbR559nWJldTL8AAwTcZNyx+QYJm02LgyJvMvDB4lRm7MMG0Kz+4zHO3V3ek+l6AnOmKiEMLpXqPb7ZmG9HGSgJb0mqDciKF81WY=

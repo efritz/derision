@@ -1,0 +1,9 @@
+- request:
+    path: /a1
+  response:
+    body: a1
+    status_code: '202'
+- request:
+    path: /a2
+  response:
+    body: a2

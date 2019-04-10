@@ -1,0 +1,31 @@
+type: object
+properties:
+  request:
+    type: object
+    properties:
+      method:
+        type: string
+      path:
+        type: string
+      headers:
+        type: object
+        additionalProperties:
+          type: string
+      body:
+        type: string
+    additionalProperties: false
+  response:
+    type: object
+    properties:
+      status_code:
+        type: string
+        pattern: ^\d{3}$
+      headers:
+        type: object
+      body:
+        type: string
+    additionalProperties: false
+additionalProperties: false
+required:
+  - request
+  - response
